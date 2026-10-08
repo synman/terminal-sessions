@@ -121,6 +121,17 @@ Where do launcher names come from?
 
 A shell command is retyped as `ps` shows it, so an argument that held a space loses its quotes. Two things are never re-run: an agent binary, because its launcher resumes it, and a command of 1000 characters or more, because half a command is not what was running.
 
+### Tool updates
+
+Right before the first tab of a kind opens, restore updates that tool, once. Later tabs of the same kind do not repeat it:
+
+| A tab of this kind will open | Restore runs first |
+|---|---|
+| Claude Code | `claude --update` |
+| Copilot CLI | `brew upgrade copilot-cli` |
+
+A kind with no tab to open is not updated. That covers tabs that are already open and windows left out by `--only`. OpenCode and tmux windows are never updated. A failed update prints an error and the restore goes on, since the old binary still resumes its session. `--dry-run` lists the updates and runs none. Restore runs them itself, not in a tab, and waits up to 10 minutes for each.
+
 ### tmux restore
 
 For each saved session that is not running:
@@ -156,6 +167,6 @@ A snapshot is plain JSON in your home directory, created with your default umask
 
 ## Source and upkeep
 
-Described from `terminal-sessions.py` functions: `capture`, `_describe_tab`, `_group_tabs`, `_split_by_bars`, `_order_from_earlier`, `_match_windows`, `_insert_plan`, `_tab_command`, `_open_tab`, `_restore_tmux`, `_tmux_cmds`, `_launchers_present`, `_window_name`, `_state`, `prune`.
+Described from `terminal-sessions.py` functions: `capture`, `_describe_tab`, `_group_tabs`, `_split_by_bars`, `_order_from_earlier`, `_match_windows`, `_insert_plan`, `_tab_command`, `_update_before`, `_open_tab`, `_restore_tmux`, `_tmux_cmds`, `_launchers_present`, `_window_name`, `_state`, `prune`.
 
 Update this guide when any of them changes behavior, when the `CARRY` or `NOT_CARRIED` tables change, or when the glyph legend changes. Check it with `--list` and `--restore --dry-run` against a real snapshot.

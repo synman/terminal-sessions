@@ -56,6 +56,12 @@ args_not_replayed in the snapshot.
                 idle, as after a reboot, the command is typed into that tab.
 When the scope launcher function does not exist, the bare binary is used from the tab's cwd.
 
+Right before the first tab of a kind opens, restore updates that tool, once:
+`claude --update` for Claude Code, `brew upgrade copilot-cli` for Copilot CLI.
+A kind with no tab to open (all already open, or filtered out by --only) is not
+updated, and OpenCode and tmux windows are never updated. A failed update is reported and the restore
+continues. --dry-run lists the updates without running them.
+
 tmux: --capture records every session as a recipe, per window its name, directory
 and the command tmux started it with (or the command typed into a shell window).
 Only each window's first pane is kept. --restore rebuilds each session that is
@@ -763,6 +769,39 @@ def _tab_command(tab: dict) -> str:
     return cmd
 
 
+# Updated once, right before the first tab of that kind opens. A kind with no
+# tab to open is never updated.
+UPDATERS = {
+    "claude": ["claude", "--update"],
+    "copilot": ["brew", "upgrade", "copilot-cli"],
+}
+BREW_FALLBACK = "/opt/homebrew/bin/brew"
+
+
+def _update_before(tab: dict, done: set[str], dry_run: bool) -> None:
+    """Run the tab kind's updater the first time a tab of that kind is about to
+    open. A failure is reported and the restore goes on: a stale binary still
+    resumes its session."""
+    kind = tab["kind"]
+    if kind not in UPDATERS or kind in done:
+        return
+    done.add(kind)
+    cmd = list(UPDATERS[kind])
+    exe = shutil.which(cmd[0]) or (BREW_FALLBACK if cmd[0] == "brew" and Path(BREW_FALLBACK).exists() else "")
+    print(c("   would run " if dry_run else "   running ", "dim") + c(" ".join(cmd), "dim")
+          + c(f"  (before the first {kind} tab)", "dim"))
+    if dry_run:
+        return
+    if not exe:
+        print(c("   ✗ ", "red") + f"{cmd[0]} not found; {kind} tabs open without an update", file=sys.stderr)
+        return
+    try:
+        tail = _run([exe] + cmd[1:], timeout=600).strip().splitlines()[-1:]
+        print(c("   ✓ ", "green") + f"{kind} updated" + (c(f"  {tail[0][:100]}", "dim") if tail else ""))
+    except (RuntimeError, subprocess.TimeoutExpired) as exc:
+        print(c("   ✗ ", "red") + f"{kind} update failed, opening anyway: {exc}", file=sys.stderr)
+
+
 def _run_in_tab(wid: int, cmd: str) -> None:
     """Type cmd into an already-open tab. Addressed by id, so the window is
     not fronted and does not move between desktops."""
@@ -1021,6 +1060,7 @@ def restore(path: Path, only: list[str], dry_run: bool) -> int:
           + c(f"  from {path.name} · captured {_when(snap.get('captured_at', ''))}", "dim"))
     if not only or "tmux" in only:
         _restore_tmux(snap, dry_run)
+    updated: set[str] = set()
     for w, opened in zip(snap["windows"], matched):
         if only and _name(w) not in only:
             continue
@@ -1038,6 +1078,7 @@ def restore(path: Path, only: list[str], dry_run: bool) -> int:
         for anchor, run in _insert_plan(opened).items():
             where = "new window" if anchor is None else "after " + _label(w["tabs"][anchor])
             for i in run:
+                _update_before(w["tabs"][i], updated, dry_run)
                 print(c(f"   {verb} ", "dim") + c(_tab_command(w["tabs"][i]), "dim") + c(f"  ({where})", "dim"))
             if dry_run:
                 continue

@@ -18,6 +18,8 @@ Find the line you saw, then follow the fix. A restore is safe to repeat: it skip
 
 ## Surprising results
 
+**Restore ran an update I did not expect.** Restore runs `claude --update` or `brew upgrade copilot-cli` once, right before the first tab of that kind opens. Use `--dry-run` to see it first, or `--only` to leave a window out. See [Tool updates](operators-guide.md#tool-updates).
+
 **Two windows were merged into one.** Terminal windows that share the same frame are one group by bounds. The tool splits them by what the tab bar lists. If a window sits on another desktop, its bar is unreadable and it can stay merged. Capture again from each desktop. Delete the bad snapshot. See [SOP: Snapshot care](sop-snapshot-care.md).
 
 **Windows ended up on one desktop after a restore.** Adding a tab to an open window fronts that window, and Terminal moves a fronted window onto the current desktop. Restore the windows from the desktop where you want them, one at a time with `--only`.

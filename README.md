@@ -68,6 +68,7 @@ Exit codes: `0` success, `1` capture or restore error, `2` usage error.
 
 - **Restore runs commands.** A shell tab's foreground command is typed back into the tab. Read `--dry-run` first.
 - **A snapshot is sensitive.** It holds directories, window titles, session ids, and commands as `ps` shows them. A secret passed on a command line is in there. Keep snapshots private and out of version control.
+- **Restore updates tools.** Right before the first Claude Code tab it runs `claude --update`, and before the first Copilot CLI tab `brew upgrade copilot-cli`. A kind with no tab to open is not updated.
 - **Restore moves windows.** Adding a tab to an open window brings that window to the front on the current desktop. Do not type while restore runs.
 - **Tmux sessions come back new.** No history, no running state, no resume flag.
 
