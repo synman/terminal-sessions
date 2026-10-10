@@ -508,10 +508,12 @@ def _scope(cwd: str) -> str:
 
 
 def _arg_after(command: str, flags: tuple[str, ...]) -> str:
+    """The value given to one of ``flags``, or "". A bare flag followed by
+    another option has no value: `--resume --yolo` is a picker, not an id."""
     tokens = command.split()
     for i, tok in enumerate(tokens):
         for f in flags:
-            if tok == f and i + 1 < len(tokens):
+            if tok == f and i + 1 < len(tokens) and not tokens[i + 1].startswith("-"):
                 return tokens[i + 1]
             if tok.startswith(f + "="):
                 return tok.split("=", 1)[1]
@@ -535,8 +537,10 @@ def _describe_tab(tty: str, procs: list[dict], claude: dict, copilot: dict) -> d
     for pid in sorted(pids):
         cmd = by_pid[pid]["command"]
         if pid in copilot or Path(cmd.split()[0]).name == "copilot":
-            # A session started with --resume writes no inuse lock, so its id
-            # comes from argv. Still "" when neither has it: a fresh launch.
+            # The inuse lock names the session, a resumed one included. A lock
+            # on a session with no content yet maps to "", so the id falls back
+            # to a --resume value in argv. Still "" when neither has it: a
+            # fresh launch.
             sid = copilot.get(pid) or _arg_after(cmd, ("--resume",))
             cwd = _cwd(pid)
             scope = _scope(cwd)

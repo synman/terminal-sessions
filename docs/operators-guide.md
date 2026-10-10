@@ -21,7 +21,7 @@ terminal-sessions --capture
 Capture reads, and launches nothing. For each visible Terminal tab it records the tty, window id, title, and what runs on the tab:
 
 - **Claude Code.** The session id comes from `~/.claude/sessions/<pid>.json`.
-- **Copilot CLI.** The id comes from `~/.copilot/session-state/*/inuse.<pid>.lock`. A Copilot started with `--resume` writes no lock, so the id comes from its arguments. `COPILOT_HOME` moves the base directory. A session with no content yet has no id, and restore starts a fresh one.
+- **Copilot CLI.** The id comes from `~/.copilot/session-state/*/inuse.<pid>.lock`. A resumed Copilot writes one too. When the lock's session has no content yet, the id falls back to a `--resume` value in its arguments; a bare `--resume`, as at the session picker, carries none. `COPILOT_HOME` moves the base directory. A session with no content yet has no id, and restore starts a fresh one.
 - **OpenCode.** The id comes from `-s` or `--session` in its arguments. Failing that, it is the session in the tab's project directory updated last since the process started, read from OpenCode's SQLite database. With no id found, restore passes `--continue`.
 - **Shell.** The tab's directory, plus the foreground command if one is running. The tab that runs the capture is never recorded as running anything.
 
