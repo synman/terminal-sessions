@@ -28,7 +28,7 @@ Find the line you saw, then follow the fix. A restore is safe to repeat: it skip
 
 **An agent started with a different model or flag.** Only an allowlist of options is carried. The rest are in `args_not_replayed`. See [Reference](reference.md#options-carried-across-a-restore).
 
-**A tab restored as the bare binary, not through my launcher.** Capture keeps a launcher only when it is a zsh function that an interactive zsh sees. An alias or a script on `PATH` does not count. Define it as a function in your `~/.zshrc`, then capture again.
+**A tab restored as the bare binary, not through my launcher.** Capture keeps a launcher only when it is a zsh function that an interactive zsh sees. An alias or a script on `PATH` does not count. Define it as a function in your `~/.zshrc`, then capture again. For a Copilot tab, also look for the stderr note `Copilot tabs use the bare copilot binary`: it names why the scope lookup failed. Set `ISAAC_ROOT` to your isaac clone if it is not found.
 
 **Extra idle shell tabs are left after a restore.** Terminal reopened them, and the agent tabs opened as new tabs beside them. Close the idle ones. See [After a reboot](operators-guide.md#after-a-reboot).
 

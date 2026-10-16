@@ -117,7 +117,7 @@ Where do launcher names come from?
 
 - Claude Code: the `name` field of `~/.claude/sessions/<pid>.json`, the session's name (for example one set with `--name`). If a zsh function has that name, restore calls it. Name your launcher function after your sessions, or ignore this and get the bare binary.
 - OpenCode: the `ISAAC_OPENCODE_SESSION_NAME` or `ISAAC_OPENCODE_WORKER_NAME` environment variable of the process. These come from the author's own OpenCode launcher setup. If you do not set them, OpenCode tabs restore with the bare `opencode`.
-- Copilot: `copilot-<scope>`, found by an optional `scope_detect` module. This repository does not ship one, so Copilot tabs restore with the bare binary. See [Reference](reference.md#optional-scope-lookup).
+- Copilot: `copilot-<scope>`, where the scope comes from an isaac clone's `scope_detect` module. Without an isaac clone, Copilot tabs restore with the bare binary, and capture and restore say so once. A snapshot that saved a Copilot tab bare gets its launcher named at restore, when the function exists then. See [Reference](reference.md#optional-scope-lookup).
 
 A shell command is retyped as `ps` shows it, so an argument that held a space loses its quotes. Two things are never re-run: an agent binary, because its launcher resumes it, and a command of 1000 characters or more, because half a command is not what was running.
 

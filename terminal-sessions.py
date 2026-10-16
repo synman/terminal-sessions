@@ -55,6 +55,8 @@ args_not_replayed in the snapshot.
                 a command over 1000 characters. If the tab is already open but
                 idle, as after a reboot, the command is typed into that tab.
 When the scope launcher function does not exist, the bare binary is used from the tab's cwd.
+The Copilot scope comes from an isaac clone ($ISAAC_ROOT, else where ~/.claude/rules
+links); without one, Copilot tabs use the bare binary and a note says why.
 
 Right before the first tab of a kind opens, restore updates that tool, once:
 `claude --update` for Claude Code, `brew upgrade copilot-cli` for Copilot CLI.
@@ -102,19 +104,37 @@ import sys
 import time
 from pathlib import Path
 
-SERVICES_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(SERVICES_DIR))
-try:
-    from scope_detect import detect_scope  # noqa: E402
-except ImportError:  # optional: without it no launcher is named from a directory, and tabs use the bare binary
-    detect_scope = None
-
 HOME = Path.home()
+
+
+def _isaac_root() -> Path | None:
+    """The isaac clone that holds services/scope_detect.py and .workspace-paths.
+    $ISAAC_ROOT wins. Else the clone ~/.claude/rules links into, the link isaac's
+    installer makes. None when neither is an isaac clone."""
+    rules = HOME / ".claude" / "rules"
+    candidates = [os.environ.get("ISAAC_ROOT", ""), str(rules.resolve().parent) if rules.is_symlink() else ""]
+    for cand in filter(None, candidates):
+        root = Path(cand).expanduser()
+        if (root / "services" / "scope_detect.py").is_file():
+            return root
+    return None
+
+
+ISAAC_ROOT = _isaac_root()
+detect_scope = None
+SCOPE_MISS = "no isaac clone found (set ISAAC_ROOT)"
+if ISAAC_ROOT:
+    sys.path.insert(0, str(ISAAC_ROOT / "services"))
+    try:
+        from scope_detect import detect_scope  # noqa: E402
+    except ImportError as exc:
+        SCOPE_MISS = f"scope_detect failed to import from {ISAAC_ROOT / 'services'}: {exc}"
+
 STORE = HOME / ".claude" / "terminal-sessions"
 CLAUDE_SESSIONS = HOME / ".claude" / "sessions"
 COPILOT_STATE = Path(os.environ.get("COPILOT_HOME", HOME / ".copilot")) / "session-state"
 OPENCODE_DBS = [HOME / ".local/share/opencode/opencode-local.db", HOME / ".local/share/opencode/opencode.db"]
-WS_PATHS = SERVICES_DIR.parent / ".workspace-paths"
+WS_PATHS = ISAAC_ROOT / ".workspace-paths" if ISAAC_ROOT else None
 FG_MAX = 1000  # longest foreground command kept; a longer one is cut and never re-run
 AGENT_BINARIES = {"claude", "copilot", "opencode"}  # agent tabs resume through their launchers
 SEP = " — "  # Terminal title separator (em dash)
@@ -499,12 +519,36 @@ def _start_epoch(pid: int) -> float:
         return 0.0
 
 
+_scope_miss_told = False
+
+
 def _scope(cwd: str) -> str:
+    """The isaac scope of ``cwd``, which names its copilot-<scope> launcher.
+    "" when there is no isaac clone or the lookup fails, and that is said once:
+    a Copilot tab then restores as the bare binary, which skips the launcher."""
+    global _scope_miss_told
+    if not detect_scope:
+        if not _scope_miss_told:
+            print(f"note: {SCOPE_MISS}; Copilot tabs use the bare copilot binary", file=sys.stderr)
+            _scope_miss_told = True
+        return ""
     try:
-        return detect_scope(cwd, WS_PATHS)[0] if cwd and detect_scope else ""
+        return detect_scope(cwd, WS_PATHS)[0] if cwd else ""
     except Exception as exc:  # scope only names a launcher; a miss falls back to the bare binary
         print(f"note: scope lookup failed for {cwd}: {exc}", file=sys.stderr)
         return ""
+
+
+def _fill_copilot_launchers(windows: list[dict]) -> None:
+    """Name a launcher for each Copilot tab saved without one, from its
+    directory, when that zsh function exists now. Snapshots taken while the
+    scope lookup was broken saved every Copilot tab bare."""
+    want = [(t, f"copilot-{s}") for w in windows for t in w["tabs"]
+            if t.get("kind") == "copilot" and not t.get("launcher") and (s := _scope(t.get("cwd", "")))]
+    present = _launchers_present({n for _, n in want})
+    for t, name in want:
+        if name in present:
+            t["launcher"] = name
 
 
 def _arg_after(command: str, flags: tuple[str, ...]) -> str:
@@ -1051,6 +1095,7 @@ def _insert_plan(opened: list[int | None]) -> dict[int | None, list[int]]:
 
 def restore(path: Path, only: list[str], dry_run: bool) -> int:
     snap = json.loads(path.read_text())
+    _fill_copilot_launchers(snap["windows"])
     names = [_name(w) for w in snap["windows"]] + ["tmux"]
     unknown = [n for n in only if n not in names]
     if unknown:

@@ -100,7 +100,11 @@ Any other flag is dropped and recorded under `args_not_replayed`. The table is a
 
 ## Optional scope lookup
 
-The script tries `from scope_detect import detect_scope` from its own directory. Without that module, every Copilot tab is restored with the bare `copilot` binary, and nothing else changes. To supply one, provide `detect_scope(cwd, registry_path)` returning a tuple whose first item is a scope name. A Copilot tab in a directory with scope `work` then restores through a `copilot-work` zsh function, if one exists. `registry_path` is a `.workspace-paths` file one directory above the script, passed through untouched.
+The script imports `detect_scope` from an isaac clone's `services/scope_detect.py`. It finds the clone at `$ISAAC_ROOT`, else at the directory `~/.claude/rules` links into, the link isaac's installer makes. `detect_scope(cwd, registry_path)` returns a tuple whose first item is a scope name, and `registry_path` is that clone's `.workspace-paths`. A Copilot tab in a directory with scope `work` then restores through a `copilot-work` zsh function, if one exists.
+
+Without an isaac clone, or when the import fails, every Copilot tab is restored with the bare `copilot` binary, and nothing else changes. The script says so once on stderr, with the reason. To supply your own lookup, put a `services/scope_detect.py` with that function in a directory and point `ISAAC_ROOT` at it.
+
+Restore also names a launcher for any Copilot tab the snapshot saved without one, from the tab's directory, when that function exists at restore time. So a snapshot taken while the lookup was missing still restores through the launcher once the lookup works.
 
 ## Exit codes
 
